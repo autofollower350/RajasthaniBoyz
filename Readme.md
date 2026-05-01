@@ -1,12 +1,11 @@
 <div align="center">
 
-## 🚩 Rajasthani Boyz - JNVU Admit Card Bot 🚩
+## 🚩 Rajasthani Boyz -  Admit Card Bot 🚩
 
 [![Made with Baileys](https://img.shields.io/badge/Made%20with-Baileys-00bcd4?style=for-the-badge)](https://github.com/WhiskeySockets/Baileys)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge)]()
 
-<img src="https://i.ibb.co/vzS8YmS/rajasthani-boyz.jpg" alt="Rajasthani Boyz" width="260" style="border-radius: 50%;">
 
 </div>
 
