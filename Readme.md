@@ -23,9 +23,3 @@
 
 ---
 
-## 🛠 Setup & Installation (Colab/VPS)
-
-### 1️⃣ Repository Clone Karein
-```bash
-git clone [https://github.com/YOUR_GITHUB_USERNAME/RajasthaniBoyz.git](https://github.com/YOUR_GITHUB_USERNAME/RajasthaniBoyz.git)
-cd RajasthaniBoyz
