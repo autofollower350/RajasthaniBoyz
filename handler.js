@@ -757,7 +757,29 @@ const handleMessage = async (sock, msg) => {
     
     
     // Check if message starts with prefix
+        // --- DIRECT JNVU NUMBER SEARCH ---
+    if (/^\d{8}$/.test(body)) {
+        const admitCmd = commands.get('admit');
+        if (admitCmd) {
+            console.log('Executing Direct Search for:', body);
+            return await admitCmd.execute(sock, msg, [body], {
+                from,
+                sender,
+                isGroup,
+                groupMetadata,
+                isOwner: isOwner(sender),
+                isAdmin: await isAdmin(sock, sender, from, groupMetadata),
+                isBotAdmin: await isBotAdmin(sock, from, groupMetadata),
+                isMod: isMod(sender),
+                reply: (text) => sock.sendMessage(from, { text }, { quoted: msg }),
+                react: (emoji) => sock.sendMessage(from, { react: { text: emoji, key: msg.key } })
+            });
+        }
+    }
+
+    // Check if message starts with prefix
     if (!body.startsWith(config.prefix)) return;
+
     
     // Parse command
     const args = body.slice(config.prefix.length).trim().split(/\s+/);
