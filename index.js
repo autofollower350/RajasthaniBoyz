@@ -9,11 +9,14 @@ async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
 
     const sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: 'silent' }),
-        browser: Browsers.ubuntu('Chrome'), 
-        printQRInTerminal: false
-    });
+    auth: state,
+    logger: pino({ level: 'info' }), // Info level hi rehne dena takki logs dikhein
+    browser: Browsers.macOS('Desktop'),
+    connectTimeoutMs: 60000, // 1 minute ka time do
+    defaultQueryTimeoutMs: 0,
+    keepAliveIntervalMs: 10000,
+    printQRInTerminal: false
+});
 
     // 2. QR & Connection Logic
     sock.ev.on('connection.update', (update) => {
