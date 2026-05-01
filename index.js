@@ -1,70 +1,112 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
-const { exec } = require('child_process');
-const fs = require('fs');
-const pino = require('pino');
-const qrcode = require('qrcode-terminal');
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    fetchLatestBaileysVersion,
+    generateForwardMessageContent,
+    prepareWAMessageMedia,
+    generateWAMessageFromContent,
+    generateMessageID,
+    downloadContentFromMessage,
+    makeInMemoryStore,
+    jidDecode,
+    proto,
+    Browsers
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const { Boom } = require("@hapi/boom");
+const fs = require("fs");
+const { exec } = require("child_process");
+const qrcode = require("qrcode-terminal");
 
-async function startBot() {
-    // Session folder ka path (RajasthaniBoyz ke andar)
+const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) });
+
+async function startKnightJnvu() {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
-    
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+
     const sock = makeWASocket({
+        version,
+        logger: pino({ level: "silent" }),
+        printQRInTerminal: false, // Hum manually handle karenge bypass ke liye
+        browser: Browsers.ubuntu("Chrome"),
         auth: state,
-        logger: pino({ level: 'silent' }),
-        browser: Browsers.ubuntu('Chrome'), // Isse connection stable rehta hai
-        connectTimeoutMs: 60000,
-        printQRInTerminal: false // Hum khud handle karenge niche
+        getMessage: async (key) => {
+            if (store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id);
+                return msg.message || undefined;
+            }
+            return { conversation: "Knight Bot JNVU" };
+        }
     });
 
-    // Connection Updates & QR Display
-    sock.ev.on('connection.update', (update) => {
+    store.bind(sock.ev);
+
+    // --- Connection handling (Knight Style) ---
+    sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
-        
         if (qr) {
-            console.log("⬇️ SCAN THIS NEW QR CODE ⬇️");
+            console.log("⬇️ JNVU BOT QR CODE - SCAN NOW ⬇️");
             qrcode.generate(qr, { small: true });
         }
-
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed. Reconnecting...', shouldReconnect);
-            if (shouldReconnect) startBot();
-        } else if (connection === 'open') {
-            console.log('✅ JNVU BOT CONNECTED SUCCESSFULLY!');
+        if (connection === "close") {
+            let reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            if (reason === DisconnectReason.restartRequired) {
+                console.log("Restart Required, Restarting...");
+                startKnightJnvu();
+            } else if (reason === DisconnectReason.loggedOut) {
+                console.log("Device Logged Out, Please Scan Again.");
+                process.exit();
+            } else {
+                console.log("Connection Closed, Reconnecting...");
+                startKnightJnvu();
+            }
+        } else if (connection === "open") {
+            console.log("✅ Knight JNVU Bot is Online!");
         }
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const m = messages[0];
-        if (!m.message || m.key.fromMe) return;
+    // --- Message Handler (Sirf JNVU Rakha Hai) ---
+    sock.ev.on("messages.upsert", async (chatUpdate) => {
+        try {
+            const m = chatUpdate.messages[0];
+            if (!m.message || m.key.fromMe) return;
 
-        const from = m.key.remoteJid;
-        const text = m.message.conversation || m.message.extendedTextMessage?.text || "";
+            const from = m.key.remoteJid;
+            const text = m.message.conversation || m.message.extendedTextMessage?.text || "";
 
-        if (text.startsWith('.admit')) {
-            const formNo = text.replace('.admit', '').trim();
-            if (!formNo) return sock.sendMessage(from, { text: "❌ Form No. likhein! Example: .admit 12345" });
+            // .admit command logic
+            if (text.startsWith(".admit")) {
+                const formNo = text.replace(".admit", "").trim();
+                if (!formNo) return sock.sendMessage(from, { text: "❌ *Error:* Form No. likhein!\nExample: `.admit 12345`" });
 
-            await sock.sendMessage(from, { text: "⏳ Processing... JNVU Server se PDF nikal raha hoon." });
+                await sock.sendMessage(from, { text: "⏳ *JNVU Server se link connect ho raha hai...*" });
 
-            exec(`python3 jnvu.py ${formNo}`, async (error) => {
-                const pdfPath = `./admit_card_${formNo}.pdf`;
-                if (fs.existsSync(pdfPath)) {
-                    await sock.sendMessage(from, { 
-                        document: { url: pdfPath }, 
-                        mimetype: 'application/pdf', 
-                        fileName: `JNVU_Admit_${formNo}.pdf`,
-                        caption: `✅ *Success!*\nForm No: ${formNo}`
-                    });
-                    setTimeout(() => { if(fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath); }, 5000);
-                } else {
-                    await sock.sendMessage(from, { text: "❌ Admit Card nahi mila. Check karein ki details sahi hain." });
-                }
-            });
+                // Python script call
+                exec(`python3 jnvu.py ${formNo}`, async (error, stdout, stderr) => {
+                    const pdfPath = `./admit_card_${formNo}.pdf`;
+
+                    if (fs.existsSync(pdfPath)) {
+                        await sock.sendMessage(from, { 
+                            document: { url: pdfPath }, 
+                            mimetype: "application/pdf", 
+                            fileName: `JNVU_Admit_${formNo}.pdf`,
+                            caption: `✅ *JNVU Admit Card Downloaded*\n\n*Form No:* ${formNo}\n*Status:* Success`
+                        }, { quoted: m });
+
+                        // Clean up
+                        setTimeout(() => { if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath); }, 5000);
+                    } else {
+                        await sock.sendMessage(from, { text: "❌ *Failed:* Admit card nahi mila. Website check karein ya Form No. re-verify karein." });
+                    }
+                });
+            }
+        } catch (err) {
+            console.log("Error in message handler: ", err);
         }
     });
 }
 
-startBot();
+startKnightJnvu();
