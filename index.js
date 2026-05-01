@@ -14,15 +14,17 @@ async function startKnightJnvu() {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
 
     const sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: "silent" }),
-        printQRInTerminal: false,
-        // Ye line 405 error rokne mein madad karti hai
-        browser: Browsers.macOS('Desktop'), 
-        syncFullHistory: false,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-    });
+    const sock = makeWASocket({
+    auth: state,
+    logger: pino({ level: "silent" }),
+    browser: Browsers.macOS('Desktop'), // Browser change karne se 405 fix hota hai
+    printQRInTerminal: false,
+    connectTimeoutMs: 60000,
+    // Add these lines
+    syncFullHistory: false,
+    markOnlineOnConnect: true,
+});
+
 
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
