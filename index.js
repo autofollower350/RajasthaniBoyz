@@ -20,18 +20,24 @@ async function startBot() {
 
     // 2. QR & Connection Logic
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        if (qr) {
-            console.log("⬇️ SCAN THIS QR CODE WITH WHATSAPP ⬇️");
-            qrcode.generate(qr, { small: true });
+    const { connection, lastDisconnect, qr } = update;
+    
+    // Agar QR generate ho, toh use terminal mein dikhao
+    if (qr) {
+        console.log("⬇️ SCAN THIS QR CODE ⬇️");
+        qrcode.generate(qr, { small: true });
+    }
+
+    if (connection === 'close') {
+        const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+        if (reason !== DisconnectReason.loggedOut) {
+            startBot(); // Reconnect if not logged out
         }
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startBot();
-        } else if (connection === 'open') {
-            console.log('✅ JNVU BOT ONLINE - Ab .admit command bhejo!');
-        }
-    });
+    } else if (connection === 'open') {
+        console.log('✅ BOT ONLINE HOGAYA!');
+    }
+});
+
 
     sock.ev.on('creds.update', saveCreds);
 
