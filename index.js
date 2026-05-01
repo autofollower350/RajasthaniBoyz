@@ -1,90 +1,52 @@
-/**
- * WhatsApp MD Bot - Main Entry Point
- */
-process.env.PUPPETEER_SKIP_DOWNLOAD = 'true';
-process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
-process.env.PUPPETEER_CACHE_DIR = process.env.PUPPETEER_CACHE_DIR || '/tmp/puppeteer_cache_disabled';
-
-const { initializeTempSystem } = require('./utils/tempManager');
-const { startCleanup } = require('./utils/cleanup');
-initializeTempSystem();
-startCleanup();
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-const forbiddenPatternsConsole = [
-  'closing session',
-  'closing open session',
-  'sessionentry',
-  'prekey bundle',
-  'pendingprekey',
-  '_chains',
-  'registrationid',
-  'currentratchet',
-  'chainkey',
-  'ratchet',
-  'signal protocol',
-  'ephemeralkeypair',
-  'indexinfo',
-  'basekey'
-];
-
-console.log = (...args) => {
-  const message = args.map(a => typeof a === 'string' ? a : typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ').toLowerCase();
-  if (!forbiddenPatternsConsole.some(pattern => message.includes(pattern))) {
-    originalConsoleLog.apply(console, args);
-  }
-};
-
-console.error = (...args) => {
-  const message = args.map(a => typeof a === 'string' ? a : typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ').toLowerCase();
-  if (!forbiddenPatternsConsole.some(pattern => message.includes(pattern))) {
-    originalConsoleError.apply(console, args);
-  }
-};
-
-console.warn = (...args) => {
-  const message = args.map(a => typeof a === 'string' ? a : typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ').toLowerCase();
-  if (!forbiddenPatternsConsole.some(pattern => message.includes(pattern))) {
-    originalConsoleWarn.apply(console, args);
-  }
-};
-
-// Now safe to load libraries
-const pino = require('pino');
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason,
-  Browsers,
-  fetchLatestBaileysVersion
-} = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
-const config = require('./config');
-const handler = require('./handler');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { exec } = require('child_process');
 const fs = require('fs');
-const path = require('path');
-const zlib = require('zlib');
-const os = require('os');
+const pino = require('pino');
 
-// Remove Puppeteer cache (if some dependency downloaded Chromium into ~/.cache/puppeteer)
-function cleanupPuppeteerCache() {
-  try {
-    const home = os.homedir();
-    const cacheDir = path.join(home, '.cache', 'puppeteer');
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('./session');
+    const sock = makeWASocket({
+        auth: state,
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: true
+    });
 
-    if (fs.existsSync(cacheDir)) {
-      console.log('🧹 Removing Puppeteer cache at:', cacheDir);
-      fs.rmSync(cacheDir, { recursive: true, force: true });
-      console.log('✅ Puppeteer cache removed');
-    }
-  } catch (err) {
-    console.error('⚠️ Failed to cleanup Puppeteer cache:', err.message || err);
-  }
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+        const m = messages[0];
+        if (!m.message || m.key.fromMe) return;
+
+        const from = m.key.remoteJid;
+        const text = m.message.conversation || m.message.extendedTextMessage?.text || "";
+
+        if (text.startsWith('.admit')) {
+            const formNo = text.replace('.admit', '').trim();
+            if (!formNo) return sock.sendMessage(from, { text: "❌ Form No. likhein! (.admit 12345)" });
+
+            await sock.sendMessage(from, { text: "⏳ Processing... Playwright browser start ho raha hai." });
+
+            // Python Script Run Karna
+            exec(`python3 jnvu.py ${formNo}`, async (error) => {
+                const pdfPath = `./admit_card_${formNo}.pdf`;
+
+                if (fs.existsSync(pdfPath)) {
+                    await sock.sendMessage(from, { 
+                        document: { url: pdfPath }, 
+                        mimetype: 'application/pdf', 
+                        fileName: `JNVU_Admit_${formNo}.pdf`,
+                        caption: `✅ Admit Card Found for: ${formNo}`
+                    });
+                    // File delete karein taaki storage na bhare
+                    setTimeout(() => fs.unlinkSync(pdfPath), 5000);
+                } else {
+                    await sock.sendMessage(from, { text: "❌ Admit Card nahi mila. Form No check karein." });
+                }
+            });
+        }
+    });
 }
-// Optimized in-memory store with hard limits (Map-based for better memory management)
-const store = {
+startBot();
   messages: new Map(), // Use Map instead of plain object
   maxPerChat: 20, // Limit to 20 messages per chat
 
