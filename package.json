@@ -1,11 +1,24 @@
 {
   "name": "jnvu-bot",
   "version": "1.0.0",
+  "description": "WhatsApp Bot for JNVU and Entertainment",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "install-deps": "apt-get update && apt-get install ffmpeg -y && npm install && npx playwright install chromium && npx playwright install-deps"
+  },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.5.0",
     "pino": "^8.14.1",
     "link-preview-js": "^3.0.4",
-    "qrcode-terminal": "^0.12.0"
-  }
+    "qrcode-terminal": "^0.12.0",
+    "axios": "^1.4.0",
+    "yt-search": "^2.10.4",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-id3": "^0.2.6",
+    "playwright": "^1.38.0",
+    "express": "^4.18.2"
+  },
+  "author": "Professor",
+  "license": "MIT"
 }
