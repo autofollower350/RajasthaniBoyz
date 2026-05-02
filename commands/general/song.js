@@ -7,8 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 // Ise badal kar ye karein (Double ../../):
-const APIs = require('../../utils/api');
+// एक '../' और बढ़ा दीजिये (यानी कुल दो बार ../../)
+const APIs = require('../../utils/api'); 
 const { toAudio } = require('../../utils/converter');
+
 
 
 const AXIOS_DEFAULTS = {
