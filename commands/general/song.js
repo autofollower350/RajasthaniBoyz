@@ -238,7 +238,8 @@ module.exports = {
 
       // Cleanup: Delete temp files created during conversion
       try {
-        const tempDir = path.join(__dirname, '../temp');
+        // Ise aisa likho (Dhyan se double ../../ lagao)
+const tempDir = path.join(__dirname, '../../temp');
 
         if (fs.existsSync(tempDir)) {
           const files = fs.readdirSync(tempDir);
