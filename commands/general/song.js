@@ -6,8 +6,8 @@ const yts = require('yt-search');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const APIs = require('../../utils/api');
-const { toAudio } = require('../../utils/converter');
+const APIs = require('../utils/api');
+const { toAudio } = require('../utils/converter');
 
 const AXIOS_DEFAULTS = {
   timeout: 60000,
@@ -236,7 +236,8 @@ module.exports = {
 
       // Cleanup: Delete temp files created during conversion
       try {
-        const tempDir = path.join(__dirname, '../../temp');
+        const tempDir = path.join(__dirname, '../temp');
+
         if (fs.existsSync(tempDir)) {
           const files = fs.readdirSync(tempDir);
           const now = Date.now();
